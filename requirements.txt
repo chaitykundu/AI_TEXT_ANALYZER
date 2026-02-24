@@ -1,3 +1,5 @@
 fastapi
 uvicorn
 textblob
+python-dotenv
+requests
