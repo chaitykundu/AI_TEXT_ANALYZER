@@ -3,3 +3,5 @@ uvicorn
 textblob
 python-dotenv
 requests
+pdfplumber
+python-multipart
