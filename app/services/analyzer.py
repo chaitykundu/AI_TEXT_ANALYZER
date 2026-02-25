@@ -1,10 +1,29 @@
 # app/services/analyzer.py
 
+from sentence_transformers import SentenceTransformer
+from sklearn.metrics.pairwise import cosine_similarity
+import numpy as np
 from textblob import TextBlob
 from app.core.config import settings
 import requests
 import pdfplumber
 from io import BytesIO
+
+
+# Load embedding model once
+embedding_model = SentenceTransformer("all-MiniLM-L6-v2")
+
+def compute_semantic_similarity(text1: str, text2: str) -> float:
+    """
+    Compute cosine similarity between two texts.
+    Returns percentage score (0-100).
+    """
+    embeddings = embedding_model.encode([text1, text2])
+    similarity = cosine_similarity(
+        [embeddings[0]], [embeddings[1]]
+    )[0][0]
+
+    return round(float(similarity) * 100, 2)
 
 # ------------------------------
 # Text Analyzer (existing)
@@ -61,12 +80,7 @@ def analyze_text_with_gemini(text: str):
 # ------------------------------
 # Resume Analyzer
 # ------------------------------
-async def analyze_resume(file, use_gemini: bool = True):
-    """
-    Analyze uploaded resume file (PDF/TXT).
-    Returns: skill_score, skills_found, text summary, sentiment, polarity
-    """
-    # Extract text from file
+async def analyze_resume(file, job_description: str = None):
     content = ""
     filename = file.filename.lower()
     file_bytes = await file.read()
@@ -76,21 +90,30 @@ async def analyze_resume(file, use_gemini: bool = True):
             for page in pdf.pages:
                 content += page.extract_text() + " "
     else:
-        # TXT fallback
         content = file_bytes.decode()
 
-    # Analyze text (TextBlob or Gemini)
-    analysis = analyze_text(content, use_gemini=use_gemini)
-
-    # Simple skill scoring example
+    # Basic keyword skill scoring
     skill_keywords = ["Python", "Machine Learning", "SQL", "Data", "NLP", "AI"]
     skills_found = [k for k in skill_keywords if k.lower() in content.lower()]
     skill_score = len(skills_found) / len(skill_keywords) * 100
 
-    # Return combined result
+    # Word count
+    word_count = len(content.split())
+
+    # Semantic matching (if JD provided)
+    semantic_score = None
+    if job_description:
+        semantic_score = compute_semantic_similarity(content, job_description)
+
+    # Weighted final score
+    final_score = skill_score
+    if semantic_score:
+        final_score = (0.6 * skill_score) + (0.4 * semantic_score)
+
     return {
-        "text_summary": content[:500] + ("..." if len(content) > 500 else ""),
-        "skill_score": round(skill_score, 2),
         "skills_found": skills_found,
-        **analysis
+        "skill_score": round(skill_score, 2),
+        "semantic_match_score": semantic_score,
+        "final_score": round(final_score, 2),
+        "word_count": word_count
     }

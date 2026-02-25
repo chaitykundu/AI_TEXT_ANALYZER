@@ -1,4 +1,4 @@
-from fastapi import APIRouter, File, UploadFile
+from fastapi import APIRouter, File, UploadFile, Form
 from app.models.schema import TextRequest, TextResponse
 from app.services.analyzer import analyze_text, analyze_resume
 
@@ -17,11 +17,20 @@ def analyze(request: TextRequest, use_gemini: bool = False):
 
 # Resume Analyzer endpoint (new)
 @router.post("/analyze_resume")
-async def analyze_resume_endpoint(file: UploadFile = File(...), use_gemini: bool = True):
+async def analyze_resume_endpoint(
+    file: UploadFile = File(...),
+    job_description: str = Form(None)
+):
     """
-    Upload a PDF/TXT resume.
-    use_gemini=True to utilize Gemini API for analysis.
-    Returns: skill score, text summary, sentiment, and polarity
+    Upload a resume (PDF/TXT).
+    Optionally provide a job description for semantic matching.
+    
+    Returns:
+    - skill_score
+    - semantic_match_score (if JD provided)
+    - final_score
+    - skills_found
+    - word_count
     """
-    result = await analyze_resume(file, use_gemini=use_gemini)
+    result = await analyze_resume(file, job_description)
     return result
