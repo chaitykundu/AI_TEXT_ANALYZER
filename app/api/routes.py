@@ -22,14 +22,14 @@ async def analyze_resume_endpoint(
     job_description: str = Form(None)
 ):
     """
-    Upload a resume (PDF/TXT).
+    Upload a resume (PDF/TXT/DOCS).
     Optionally provide a job description for semantic matching.
     
     Returns:
     - skill_score
-    - semantic_match_score (if JD provided)
+    - semantic_match_score (if JD provided) 
     - final_score
-    - skills_found
+    - skills_found   
     - word_count
     """
     result = await analyze_resume(file, job_description)
